@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overclockde — Medium-Fi Prototype</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a1a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .screen { display: none; }
+  .screen.visible { display: block; }
+
+  /* iPhone 15 shell */
+  .phone {
+    background: #fff;
+    border: 10px solid #111;
+    border-radius: 54px;
+    overflow: hidden;
+    width: 390px;
+    height: 844px;
+    box-shadow: 0 0 0 1px #333, 0 24px 60px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .phone-notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 34px; background: #111;
+    border-radius: 0 0 20px 20px; z-index: 10;
+  }
+  .phone-bar {
+    background: #1a1a2e;
+    padding: 40px 16px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .phone-bar .logo { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: 0.04em; }
+  .phone-bar .icons { display: flex; gap: 10px; align-items: center; position: relative; }
+  .phone-bar .icons svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 1.8; }
+  .notif-dot {
+    width: 7px; height: 7px; background: #ef4444; border-radius: 50%;
+    position: absolute; top: -3px; right: -3px; border: 1px solid #1a1a2e;
+  }
+  .phone-body { padding: 14px 14px 4px; flex: 1; overflow-y: auto; }
+
+  /* Scrollbar */
+  .phone-body::-webkit-scrollbar { width: 4px; }
+  .phone-body::-webkit-scrollbar-track { background: transparent; }
+  .phone-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+  /* Typography */
+  .section-label { font-size: 10px; font-weight: 600; color: #999; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 6px; }
+  .section-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .section-hdr > span { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+  .view-all { font-size: 12px; color: #2563eb; cursor: pointer; background: none; border: none; font-family: inherit; }
+  .view-all:hover { text-decoration: underline; }
+
+  /* Cards */
+  .card { background: #f8f8f8; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .card.white { background: #fff; border: 1px solid #eee; }
+
+  /* Badges */
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px;
+  }
+  .badge.green  { background: #dcfce7; color: #166534; }
+  .badge.red    { background: #fee2e2; color: #991b1b; }
+  .badge.amber  { background: #fef3c7; color: #92400e; }
+  .badge.blue   { background: #dbeafe; color: #1e40af; }
+  .badge.gray   { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+
+  /* Pet header */
+  .pet-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .avatar {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: #dbeafe; display: flex; align-items: center;
+    justify-content: center; font-size: 24px; flex-shrink: 0;
+  }
+  .pet-name { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+  .pet-sub   { font-size: 12px; color: #888; margin-top: 2px; }
+
+  .sync-row {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: #aaa; margin-bottom: 12px;
+    padding-bottom: 10px; border-bottom: 1px solid #f0f0f0;
+  }
+
+  /* Alert */
+  .alert-card {
+    background: #fee2e2; border-radius: 12px; padding: 10px 12px;
+    margin-bottom: 10px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+    border: 1px solid #fca5a5;
+  }
+  .alert-card:hover { background: #fecaca; }
+  .alert-card svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+  .alert-title { font-size: 13px; font-weight: 600; color: #991b1b; }
+  .alert-sub   { font-size: 11px; color: #b91c1c; margin-top: 1px; }
+
+  /* Tri-grid */
+  .tri-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+  .tri-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 8px; text-align: center; }
+  .tri-val { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .tri-lbl { font-size: 10px; color: #999; margin-top: 2px; }
+
+  /* Task rows */
+  .task-row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid #f5f5f5; }
+  .task-row:last-child { border-bottom: none; }
+  .task-emoji { width: 32px; height: 32px; border-radius: 50%; background: #f0f4ff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .task-name { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+  .task-time { font-size: 11px; color: #aaa; margin-top: 1px; }
+  .task-check {
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #ccc; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .task-check:hover:not(.done) { border-color: #16a34a; }
+  .task-check.done { background: #16a34a; border-color: #16a34a; }
+  .task-check.done svg { width: 12px; height: 12px; stroke: #fff; stroke-width: 3; fill: none; }
+
+  /* Vitals */
+  .vitals-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .vital-item { flex: 1; text-align: center; }
+  .vital-val  { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+  .vital-unit { font-size: 10px; color: #aaa; }
+  .vital-lbl  { font-size: 11px; color: #888; margin-top: 2px; }
+
+  /* Bar chart */
+  .mini-bar-wrap { display: flex; gap: 3px; align-items: flex-end; height: 44px; margin: 8px 0; }
+  .mini-bar { background: #bfdbfe; border-radius: 2px 2px 0 0; flex: 1; min-height: 4px; }
+  .mini-bar.hi { background: #3b82f6; }
+  .mini-bar.danger { background: #ef4444; }
+
+  /* Severity list */
+  .severity-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .sev-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; }
+  .sev-row.critical { background: #fee2e2; }
+  .sev-row.moderate { background: #fef3c7; }
+  .sev-row.minor    { background: #f0fdf4; }
+  .sev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .sev-dot.critical { background: #dc2626; }
+  .sev-dot.moderate { background: #d97706; }
+  .sev-dot.minor    { background: #16a34a; }
+  .sev-label { font-size: 12px; font-weight: 600; flex: 1; }
+  .sev-row.critical .sev-label { color: #991b1b; }
+  .sev-row.moderate .sev-label { color: #92400e; }
+  .sev-row.minor    .sev-label { color: #166534; }
+  .sev-sub  { font-size: 10px; margin-top: 1px; }
+  .sev-row.critical .sev-sub { color: #b91c1c; }
+  .sev-row.moderate .sev-sub { color: #a16207; }
+  .sev-row.minor    .sev-sub { color: #15803d; }
+  .sev-time { font-size: 10px; color: #aaa; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 6px; margin: 10px 0; }
+  .btn-primary {
+    flex: 1; background: #1a1a2e; color: #fff;
+    font-size: 12px; font-weight: 600; padding: 10px;
+    border-radius: 10px; border: none; cursor: pointer; font-family: inherit;
+  }
+  .btn-primary:hover { background: #2d2d4a; }
+  .btn-secondary {
+    flex: 1; background: #f5f5f5; color: #1a1a1a;
+    font-size: 12px; font-weight: 500; padding: 10px;
+    border-radius: 10px; border: 1px solid #ddd; cursor: pointer; font-family: inherit;
+  }
+  .btn-secondary:hover { background: #ebebeb; }
+  .btn-danger {
+    flex: 1; background: #fee2e2; color: #991b1b;
+    font-size: 12px; font-weight: 600; padding: 10px;
+    border-radius: 10px; border: 1px solid #fca5a5; cursor: pointer; font-family: inherit;
+  }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-full { width: 100%; margin-bottom: 6px; }
+
+  /* Symptom chips */
+  .chips-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .symptom-chip {
+    display: inline-block; padding: 5px 11px; border-radius: 20px;
+    font-size: 12px; border: 1px solid #ddd; color: #555;
+    cursor: pointer; background: #f8f8f8; transition: all 0.12s; font-family: inherit;
+  }
+  .symptom-chip:hover { border-color: #1a1a2e; }
+  .symptom-chip.selected { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  /* Triage outcomes */
+  .triage-outcome { border-radius: 12px; padding: 12px; margin-top: 10px; }
+  .triage-outcome.home      { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .triage-outcome.soon      { background: #fef3c7; border: 1px solid #fde68a; }
+  .triage-outcome.emergency { background: #fee2e2; border: 1px solid #fca5a5; }
+  .triage-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .triage-outcome.home      .triage-title { color: #166534; }
+  .triage-outcome.soon      .triage-title { color: #92400e; }
+  .triage-outcome.emergency .triage-title { color: #991b1b; }
+  .triage-desc { font-size: 11px; color: #555; line-height: 1.5; }
+  .triage-cost { font-size: 11px; font-weight: 600; margin-top: 6px; color: #333; }
+
+  /* Annotation boxes */
+  .annotation {
+    background: #fffbeb; border: 1px solid #fde68a;
+    border-radius: 8px; padding: 8px 10px; margin: 8px 0;
+  }
+  .ann-title { font-size: 10px; font-weight: 700; color: #92400e; margin-bottom: 2px; }
+  .ann-text  { font-size: 10px; color: #78350f; line-height: 1.5; }
+
+  /* Members row */
+  .members-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .member-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    display: flex; background: #fff;
+    border-top: 1px solid #f0f0f0; padding: 8px 0 20px;
+    flex-shrink: 0;
+  }
+  .bnav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; cursor: pointer; background: none; border: none;
+  }
+  .bnav-item svg { width: 20px; height: 20px; stroke: #bbb; fill: none; stroke-width: 1.8; }
+  .bnav-item.active svg { stroke: #1a1a2e; }
+  .bnav-label { font-size: 9px; color: #bbb; font-family: inherit; }
+  .bnav-item.active .bnav-label { color: #1a1a2e; font-weight: 600; }
+
+  /* Form elements */
+  select, input[type=text] {
+    width: 100%; padding: 8px 10px;
+    border-radius: 8px; border: 1px solid #ddd;
+    font-size: 13px; background: #f8f8f8; color: #1a1a1a;
+    margin-bottom: 6px; outline: none; font-family: inherit;
+    appearance: auto;
+  }
+  select:focus, input[type=text]:focus { border-color: #1a1a2e; background: #fff; }
+
+  /* Add task modal */
+  .modal-overlay {
+    background: rgba(0,0,0,0.35); border-radius: 0 0 24px 24px;
+    display: flex; align-items: flex-end; margin: 0 -14px;
+    padding: 0;
+  }
+  .modal-sheet {
+    background: #fff; border-radius: 16px 16px 0 0;
+    padding: 16px 14px 20px; width: 100%;
+  }
+  .modal-handle {
+    width: 32px; height: 3px; background: #ddd;
+    border-radius: 2px; margin: 0 auto 12px;
+  }
+  .modal-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 10px; }
+
+  /* Summary counter cards */
+  .count-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+  .count-card { text-align: center; border-radius: 10px; padding: 10px 8px; }
+  .count-card.red    { background: #fee2e2; }
+  .count-card.amber  { background: #fef3c7; }
+  .count-card.green  { background: #dcfce7; }
+  .count-num  { font-size: 20px; font-weight: 700; }
+  .count-card.red   .count-num { color: #991b1b; }
+  .count-card.amber .count-num { color: #92400e; }
+  .count-card.green .count-num { color: #166534; }
+  .count-lbl  { font-size: 10px; margin-top: 1px; }
+  .count-card.red   .count-lbl { color: #b91c1c; }
+  .count-card.amber .count-lbl { color: #a16207; }
+  .count-card.green .count-lbl { color: #166534; }
+
+  /* Legend */
+  .legend { display: flex; gap: 12px; font-size: 10px; color: #777; margin-bottom: 10px; flex-wrap: wrap; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  /* Health score */
+  .score-wrap { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .score-box { background: #fee2e2; border-radius: 12px; padding: 14px 18px; text-align: center; }
+  .score-num { font-size: 28px; font-weight: 700; color: #991b1b; }
+  .score-lbl { font-size: 10px; color: #b91c1c; }
+
+  /* Back button */
+  .back-btn {
+    background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .back-btn svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2.5; }
+
+  /* disclaimer */
+  .disclaimer { font-size: 10px; color: #aaa; margin-top: 8px; line-height: 1.5; font-style: italic; }
+
+  /* Category label above symptom group */
+  .chip-cat { font-size: 10px; font-weight: 700; color: #aaa; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SCREEN 1: DASHBOARD ═══════════════════════ -->
+<div id="screen-dashboard" class="screen visible">
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="phone-bar">
+    <span class="logo">Overclockde</span>
+    <div class="icons" style="position:relative">
+      <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="notif-dot"></div>
+    </div>
+    <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:#fff;fill:none;stroke-width:1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  </div>
+  <div class="phone-body">
+    <div class="pet-header">
+      <div class="avatar">🐕</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="pet-name">Max</span>
+          <span class="badge green">Active</span>
+        </div>
+        <div class="pet-sub">Golden Retriever · 3 yrs · 23 kg</div>
+      </div>
+    </div>
+    <div class="sync-row">
+      <span>Wearable connected</span>
+      <span>Last sync: 1 min ago</span>
+    </div>
+
+    <div class="alert-card" onclick="show('alert')">
+      <svg viewBox="0 0 24 24" style="stroke:#991b1b;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <div class="alert-title">Heart rate is elevated</div>
+        <div class="alert-sub">Detected 10 min ago · Tap to view details</div>
+      </div>
+    </div>
+
+    <div class="section-hdr"><span>Today's tasks</span><button class="view-all" onclick="show('tasks')">View all</button></div>
+    <div class="card white" style="padding:6px 12px">
+      <div class="task-row">
+        <div class="task-emoji">🍗</div>
+        <div style="flex:1"><div class="task-name">Feeding</div><div class="task-time">Late · 11:00 AM</div></div>
+        <span class="badge red">Overdue</span>
+      </div>
+      <div class="task-row">
+        <div class="task-emoji">💊</div>
+        <div style="flex:1"><div class="task-name">Medication</div><div class="task-time">Due in 2 hr · 12:00 PM</div></div>
+        <span class="badge amber">Due soon</span>
+      </div>
+      <div class="task-row" style="border:none">
+        <div class="task-emoji">🏃</div>
+        <div style="flex:1"><div class="task-name">Exercise</div><div class="task-time">Due in 3 hr · 1:00 PM</div></div>
+        <span class="badge green">On track</span>
+      </div>
+    </div>
+
+    <div class="section-hdr" style="margin-top:4px"><span>Pet status snapshot</span></div>
+    <div class="tri-grid">
+      <div class="tri-card"><div class="tri-val">Normal</div><div class="tri-lbl">Activity</div></div>
+      <div class="tri-card"><div class="tri-val" style="color:#d97706">Slightly low</div><div class="tri-lbl">Appetite</div></div>
+      <div class="tri-card"><div class="tri-val">Calm</div><div class="tri-lbl">Mood</div></div>
+    </div>
+
+    <div class="section-hdr"><span>Family members</span></div>
+    <div class="members-row">
+      <div class="member-avatar" style="background:#dbeafe;color:#1e40af">You</div>
+      <div class="member-avatar" style="background:#dcfce7;color:#166534">M</div>
+      <div class="member-avatar" style="background:#fce7f3;color:#9d174d">D</div>
+      <div class="member-avatar" style="background:#f3f4f6;color:#9ca3af;border:1.5px dashed #d1d5db">+</div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-item active" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Home</span></button>
+    <button class="bnav-item" onclick="show('tasks')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bnav-label">Tasks</span></button>
+    <button class="bnav-item" onclick="show('health')"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="bnav-label">Health</span></button>
+    <button class="bnav-item" onclick="show('symptom')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg><span class="bnav-label">Symptom</span></button>
+    <button class="bnav-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profile</span></button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════ SCREEN 2: ALERT DETAIL ═══════════════════════ -->
+<div id="screen-alert" class="screen">
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="phone-bar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="back-btn" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <span class="logo">Alert detail</span>
+    </div>
+    <span style="font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.15);padding:3px 8px;border-radius:8px">CRITICAL</span>
+  </div>
+  <div class="phone-body">
+    <div style="background:#fee2e2;border-radius:12px;padding:16px;margin-bottom:10px;text-align:center;border:1px solid #fca5a5">
+      <div style="font-size:32px;font-weight:700;color:#991b1b">148 bpm</div>
+      <div style="font-size:11px;color:#b91c1c;margin-top:3px">Normal range: 60–100 bpm</div>
+      <div style="margin-top:10px"><span class="badge red" style="font-size:11px;padding:4px 12px">Heart rate elevated</span></div>
+    </div>
+
+    <div class="section-hdr"><span>Recent activity (last 2 hrs)</span></div>
+    <div class="mini-bar-wrap">
+      <div class="mini-bar" style="height:28%"></div>
+      <div class="mini-bar" style="height:42%"></div>
+      <div class="mini-bar hi" style="height:58%"></div>
+      <div class="mini-bar hi" style="height:72%"></div>
+      <div class="mini-bar danger" style="height:90%"></div>
+      <div class="mini-bar danger" style="height:100%"></div>
+      <div class="mini-bar danger" style="height:95%"></div>
+      <div class="mini-bar hi" style="height:70%"></div>
+    </div>
+    <div style="font-size:10px;color:#aaa;text-align:right;margin-bottom:10px">Spike detected 10 min ago</div>
+
+    <div class="section-hdr"><span>Severity tiers</span></div>
+    <div class="severity-list">
+      <div class="sev-row critical">
+        <div class="sev-dot critical"></div>
+        <div style="flex:1">
+          <div class="sev-label">Critical — Seek immediate vet care</div>
+          <div class="sev-sub">Full push notification + repeats every 5 min</div>
+        </div>
+      </div>
+      <div class="sev-row moderate">
+        <div class="sev-dot moderate"></div>
+        <div style="flex:1">
+          <div class="sev-label">Moderate — Check when convenient</div>
+          <div class="sev-sub">Silent badge notification only</div>
+        </div>
+      </div>
+      <div class="sev-row minor">
+        <div class="sev-dot minor"></div>
+        <div style="flex:1">
+          <div class="sev-label">Minor — No notification sent</div>
+          <div class="sev-sub">Appears in daily summary only</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-danger">Call vet</button>
+      <button class="btn-secondary">Navigate home</button>
+    </div>
+    <button class="btn-secondary btn-full" style="border-radius:10px;padding:10px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:#f5f5f5">Monitor remotely (15 min check-in)</button>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-item" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Home</span></button>
+    <button class="bnav-item" onclick="show('tasks')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bnav-label">Tasks</span></button>
+    <button class="bnav-item active" onclick="show('health')"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="bnav-label">Health</span></button>
+    <button class="bnav-item" onclick="show('symptom')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg><span class="bnav-label">Symptom</span></button>
+    <button class="bnav-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profile</span></button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════ SCREEN 3: TASKS ═══════════════════════ -->
+<div id="screen-tasks" class="screen">
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="phone-bar">
+    <span class="logo">Shared tasks</span>
+    <button onclick="openAddTask()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;cursor:pointer;font-family:inherit">+ Add task</button>
+  </div>
+  <div class="phone-body">
+    <div class="count-grid">
+      <div class="count-card red"><div class="count-num" id="cnt-overdue">1</div><div class="count-lbl">Overdue</div></div>
+      <div class="count-card amber"><div class="count-num">2</div><div class="count-lbl">Due soon</div></div>
+      <div class="count-card green"><div class="count-num" id="cnt-done">1</div><div class="count-lbl">Completed</div></div>
+    </div>
+
+    <div class="section-hdr"><span>Pending tasks</span></div>
+    <div class="card white" style="padding:6px 12px" id="pending-list">
+      <div class="task-row" id="task-feeding">
+        <div class="task-emoji">🍗</div>
+        <div style="flex:1"><div class="task-name">Feeding</div><div class="task-time" id="time-feeding">Late · 11:00 AM</div></div>
+        <span class="badge red" id="badge-feeding" style="margin-right:6px">Overdue</span>
+        <div class="task-check" onclick="completeTask('feeding')" id="chk-feeding"></div>
+      </div>
+      <div class="task-row" id="task-medication">
+        <div class="task-emoji">💊</div>
+        <div style="flex:1"><div class="task-name">Medication</div><div class="task-time" id="time-medication">Due in 2 hr · 12:00 PM</div></div>
+        <div class="task-check" onclick="completeTask('medication')" id="chk-medication"></div>
+      </div>
+      <div class="task-row" style="border:none" id="task-brush">
+        <div class="task-emoji">🪥</div>
+        <div style="flex:1"><div class="task-name">Brush</div><div class="task-time" id="time-brush">Due in 2 hr · 2:00 PM</div></div>
+        <div class="task-check" onclick="completeTask('brush')" id="chk-brush"></div>
+      </div>
+    </div>
+
+    <div class="section-hdr" style="margin-top:10px"><span>Completed tasks</span></div>
+    <div class="card white" style="padding:6px 12px" id="completed-list">
+      <div class="task-row" style="border:none">
+        <div class="task-emoji">🏃</div>
+        <div style="flex:1">
+          <div class="task-name" style="color:#aaa;text-decoration:line-through">Exercise</div>
+          <div class="task-time">By Mom · 7:45 AM</div>
+        </div>
+        <div class="task-check done"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+      </div>
+    </div>
+
+    <div id="add-task-modal" style="display:none;margin:10px -14px 0">
+      <div class="modal-overlay">
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <div class="modal-title">Add task</div>
+          <input type="text" id="new-task-input" placeholder="Task title (auto-sorted by category)">
+          <select id="new-task-by"><option>By — You</option><option>By — Mom</option><option>By — Dad</option></select>
+          <select id="new-task-time"><option>Time — 9:00 AM</option><option>Time — 12:00 PM</option><option>Time — 3:00 PM</option><option>Time — 6:00 PM</option></select>
+          <div class="btn-row" style="margin-top:8px">
+            <button class="btn-secondary" onclick="closeAddTask()">Cancel</button>
+            <button class="btn-primary" onclick="submitTask()">Add task</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-item" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Home</span></button>
+    <button class="bnav-item active"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bnav-label">Tasks</span></button>
+    <button class="bnav-item" onclick="show('health')"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="bnav-label">Health</span></button>
+    <button class="bnav-item" onclick="show('symptom')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg><span class="bnav-label">Symptom</span></button>
+    <button class="bnav-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profile</span></button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════ SCREEN 4: HEALTH ═══════════════════════ -->
+<div id="screen-health" class="screen">
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="phone-bar">
+    <span class="logo">Health insight</span>
+    <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:#fff;fill:none;stroke-width:1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </div>
+  <div class="phone-body">
+    <div class="score-wrap">
+      <div class="score-box">
+        <div class="score-num">83</div>
+        <div class="score-lbl">Health score</div>
+      </div>
+      <div style="flex:1">
+        <div class="mini-bar-wrap">
+          <div class="mini-bar" style="height:40%;background:#fca5a5"></div>
+          <div class="mini-bar" style="height:52%;background:#fca5a5"></div>
+          <div class="mini-bar" style="height:61%;background:#fca5a5"></div>
+          <div class="mini-bar" style="height:68%;background:#fca5a5"></div>
+          <div class="mini-bar" style="height:63%;background:#fca5a5"></div>
+          <div class="mini-bar" style="height:78%;background:#fca5a5"></div>
+          <div class="mini-bar" style="height:72%;background:#ef4444"></div>
+        </div>
+        <div style="font-size:10px;color:#aaa">Past 7 days</div>
+      </div>
+    </div>
+
+    <div class="section-hdr"><span>Detected activity</span></div>
+    <div class="severity-list">
+      <div class="sev-row critical">
+        <div class="sev-dot critical"></div>
+        <div style="flex:1">
+          <div class="sev-label">Unusual inactivity detected</div>
+          <div class="sev-sub">Vomiting behaviour detected</div>
+        </div>
+        <span class="sev-time">29/4/2026</span>
+      </div>
+      <div class="sev-row moderate">
+        <div class="sev-dot moderate"></div>
+        <div style="flex:1">
+          <div class="sev-label">Significant drop in activity</div>
+          <div class="sev-sub">Over 2 days</div>
+        </div>
+        <span class="sev-time">18/4/2026</span>
+      </div>
+      <div class="sev-row minor">
+        <div class="sev-dot minor"></div>
+        <div style="flex:1">
+          <div class="sev-label">Reduced activity detected</div>
+          <div class="sev-sub">Over past 24 hours</div>
+        </div>
+        <span class="sev-time">9/4/2026</span>
+      </div>
+      <div class="sev-row minor">
+        <div class="sev-dot minor"></div>
+        <div style="flex:1">
+          <div class="sev-label">Slight decrease in water intake</div>
+          <div class="sev-sub">Mild concern flagged</div>
+        </div>
+        <span class="sev-time">2/4/2026</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><span class="legend-dot" style="background:#dc2626"></span>High concern</span>
+      <span><span class="legend-dot" style="background:#d97706"></span>Medium concern</span>
+      <span><span class="legend-dot" style="background:#16a34a"></span>Low concern</span>
+    </div>
+
+    <div class="section-hdr"><span>Vitals snapshot</span></div>
+    <div class="card white">
+      <div class="vitals-row">
+        <div class="vital-item">
+          <div class="vital-val" style="color:#dc2626">148</div>
+          <div class="vital-unit">bpm</div>
+          <div class="vital-lbl">Heart rate</div>
+        </div>
+        <div class="vital-item">
+          <div class="vital-val">38.6</div>
+          <div class="vital-unit">°C</div>
+          <div class="vital-lbl">Temperature</div>
+        </div>
+        <div class="vital-item">
+          <div class="vital-val">2.4k</div>
+          <div class="vital-unit">steps</div>
+          <div class="vital-lbl">Activity</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#aaa;text-align:right;margin-top:4px">Updated 1 min ago · Pull to refresh</div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-item" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Home</span></button>
+    <button class="bnav-item" onclick="show('tasks')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bnav-label">Tasks</span></button>
+    <button class="bnav-item active"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="bnav-label">Health</span></button>
+    <button class="bnav-item" onclick="show('symptom')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg><span class="bnav-label">Symptom</span></button>
+    <button class="bnav-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profile</span></button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════ SCREEN 5: SYMPTOM CHECKER ═══════════════════════ -->
+<div id="screen-symptom" class="screen">
+<div class="phone">
+  <div class="phone-notch"></div>
+  <div class="phone-bar">
+    <span class="logo">Symptom checker</span>
+  </div>
+  <div class="phone-body">
+    <div style="font-size:13px;color:#555;margin-bottom:10px;line-height:1.5">Select all symptoms you've observed in <strong>Max</strong>:</div>
+
+    <div class="chip-cat">Digestive</div>
+    <div class="chips-wrap">
+      <button class="symptom-chip selected" id="chip-vomiting" onclick="toggleChip('vomiting')">Vomiting</button>
+      <button class="symptom-chip" id="chip-diarrhea" onclick="toggleChip('diarrhea')">Diarrhoea</button>
+      <button class="symptom-chip" id="chip-appetite" onclick="toggleChip('appetite')">Loss of appetite</button>
+    </div>
+    <div class="chip-cat">Behavioural</div>
+    <div class="chips-wrap">
+      <button class="symptom-chip" id="chip-lethargy" onclick="toggleChip('lethargy')">Lethargy</button>
+      <button class="symptom-chip" id="chip-hiding" onclick="toggleChip('hiding')">Hiding</button>
+      <button class="symptom-chip" id="chip-aggression" onclick="toggleChip('aggression')">Aggression</button>
+    </div>
+    <div class="chip-cat">Respiratory</div>
+    <div class="chips-wrap" style="margin-bottom:12px">
+      <button class="symptom-chip" id="chip-coughing" onclick="toggleChip('coughing')">Coughing</button>
+      <button class="symptom-chip" id="chip-wheezing" onclick="toggleChip('wheezing')">Wheezing</button>
+    </div>
+
+    <div style="font-size:12px;color:#666;margin-bottom:4px">When did symptoms start?</div>
+    <select id="symptom-onset" style="margin-bottom:10px">
+      <option>Hours ago (same day)</option>
+      <option>Days ago (2–3 days)</option>
+      <option>Over a week</option>
+    </select>
+
+    <button class="btn-primary btn-full" style="border-radius:10px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;border:none" onclick="runTriage()">Check symptoms</button>
+
+    <div id="triage-result" style="display:none;margin-top:4px">
+      <div class="triage-outcome emergency" id="triage-emergency" style="display:none">
+        <div class="triage-title">Seek immediate vet care</div>
+        <div class="triage-desc">Vomiting combined with elevated heart rate may indicate a serious condition. Do not wait — go to emergency vet now.</div>
+        <div class="triage-cost">Estimated cost: $300–800 (emergency + treatment)</div>
+        <button class="btn-danger btn-full" style="margin-top:8px;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #fca5a5">Find nearest emergency vet</button>
+      </div>
+      <div class="triage-outcome soon" id="triage-soon" style="display:none">
+        <div class="triage-title">Schedule a vet visit (within 24–48 hrs)</div>
+        <div class="triage-desc">These symptoms warrant professional attention but are not immediately life-threatening.</div>
+        <div class="triage-cost">Estimated cost: $80–200</div>
+      </div>
+      <div class="triage-outcome home" id="triage-home" style="display:none">
+        <div class="triage-title">Monitor at home</div>
+        <div class="triage-desc">Symptoms appear mild. Monitor for the next 6 hours and watch for worsening changes.</div>
+        <div class="triage-cost">Estimated cost: $0</div>
+      </div>
+      <p class="disclaimer">This tool provides guidance only. Always consult a veterinarian for medical decisions.</p>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-item" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="bnav-label">Home</span></button>
+    <button class="bnav-item" onclick="show('tasks')"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="bnav-label">Tasks</span></button>
+    <button class="bnav-item" onclick="show('health')"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="bnav-label">Health</span></button>
+    <button class="bnav-item active"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg><span class="bnav-label">Symptom</span></button>
+    <button class="bnav-item"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="bnav-label">Profile</span></button>
+  </div>
+</div>
+</div>
+
+<script>
+  var screenMap = {dashboard:0, alert:1, tasks:2, health:3, symptom:4};
+
+  function show(name) {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('visible'); });
+    document.getElementById('screen-' + name).classList.add('visible');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  var completedTasks = {};
+  function completeTask(id) {
+    if (completedTasks[id]) return;
+    completedTasks[id] = true;
+    var chk = document.getElementById('chk-' + id);
+    chk.classList.add('done');
+    chk.innerHTML = '<svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg>';
+    var nameEl = document.querySelector('#task-' + id + ' .task-name');
+    if (nameEl) { nameEl.style.textDecoration = 'line-through'; nameEl.style.color = '#aaa'; }
+    var badge = document.getElementById('badge-' + id);
+    if (badge) badge.style.display = 'none';
+    var timeEl = document.getElementById('time-' + id);
+    if (timeEl) timeEl.textContent = 'Completed by You · just now';
+    var done = parseInt(document.getElementById('cnt-done').textContent);
+    document.getElementById('cnt-done').textContent = done + 1;
+    if (id === 'feeding') document.getElementById('cnt-overdue').textContent = '0';
+  }
+
+  function openAddTask() {
+    document.getElementById('add-task-modal').style.display = 'block';
+  }
+  function closeAddTask() {
+    document.getElementById('add-task-modal').style.display = 'none';
+  }
+  function submitTask() {
+    var val = document.getElementById('new-task-input').value.trim();
+    if (!val) { closeAddTask(); return; }
+    var list = document.getElementById('pending-list');
+    var row = document.createElement('div');
+    row.className = 'task-row';
+    row.innerHTML = '<div class="task-emoji">📋</div><div style="flex:1"><div class="task-name">' + val + '</div><div class="task-time">Added just now</div></div><div class="task-check"></div>';
+    list.appendChild(row);
+    document.getElementById('new-task-input').value = '';
+    closeAddTask();
+  }
+
+  var chipStates = { vomiting: true };
+  function toggleChip(id) {
+    chipStates[id] = !chipStates[id];
+    var el = document.getElementById('chip-' + id);
+    if (chipStates[id]) el.classList.add('selected');
+    else el.classList.remove('selected');
+    document.getElementById('triage-result').style.display = 'none';
+  }
+
+  function runTriage() {
+    var selected = Object.keys(chipStates).filter(function(k){ return chipStates[k]; });
+    var res = document.getElementById('triage-result');
+    res.style.display = 'block';
+    document.getElementById('triage-emergency').style.display = 'none';
+    document.getElementById('triage-soon').style.display = 'none';
+    document.getElementById('triage-home').style.display = 'none';
+    if (selected.indexOf('vomiting') > -1 || selected.indexOf('wheezing') > -1) {
+      document.getElementById('triage-emergency').style.display = 'block';
+    } else if (selected.length >= 2 || selected.indexOf('lethargy') > -1 || selected.indexOf('diarrhea') > -1) {
+      document.getElementById('triage-soon').style.display = 'block';
+    } else {
+      document.getElementById('triage-home').style.display = 'block';
+    }
+    res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+</body>
+</html>
